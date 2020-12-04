@@ -41,9 +41,9 @@ func Test_RedisExpiration(t *testing.T) {
 	rc := getRedisCache(t)
 	defer rc.client.Del(ctx, "expTest")
 
-	setVal, err := rc.Set(ctx, "expTest", "a", time.Hour)
-	if setVal != "a" || err != nil {
-		t.Errorf("Should have inserted: %v", err)
+	err := rc.Set(ctx, "expTest", "a", time.Hour)
+	if err != nil {
+		t.Error(err)
 	}
 
 	if exists, err := rc.Exists(ctx, "expTest"); exists == false || err != nil {
@@ -59,9 +59,9 @@ func Test_RedisExpiration(t *testing.T) {
 		t.Errorf("Should not exist anymore: %v %v", exists, err)
 	}
 
-	setVal, err = rc.Set(ctx, "expTest", "b", time.Hour)
-	if setVal != "b" || err != nil {
-		t.Errorf("Should have inserted: %v", err)
+	err = rc.Set(ctx, "expTest", "b", time.Hour)
+	if err != nil {
+		t.Error(err)
 	}
 
 	if err := rc.ExpireAt(ctx, "expTest", time.Now().Add(time.Second)); err != nil {
@@ -134,15 +134,12 @@ func Test_RedisGetSet(t *testing.T) {
 		t.Errorf("Expected no answer for %s", k)
 	}
 
-	v, err := rc.Set(ctx, k, "data", time.Hour)
+	err = rc.Set(ctx, k, "data", time.Hour)
 	if err != nil {
 		t.Error(err)
 	}
-	if v != "data" {
-		t.Errorf("Expected data, got %s", v)
-	}
 
-	v, ok, err = rc.Get(ctx, k)
+	v, ok, err := rc.Get(ctx, k)
 	if err != nil {
 		t.Error(err)
 	}

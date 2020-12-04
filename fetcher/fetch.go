@@ -15,6 +15,11 @@ import (
 	"net/url"
 )
 
+const (
+	MimeOcspResponse = "application/ocsp-response"
+	MimeOcspRequest = "application/ocsp-request"
+)
+
 type UpstreamFetcher struct {
 	upstreamUrl *url.URL
 	maxGetLen   int
@@ -27,6 +32,9 @@ func NewUpstreamFetcher(upstreamUrl *url.URL, identifier string) (*UpstreamFetch
 	}
 
 	maxGetLen := 254 - len(upstreamUrl.Path)
+	if maxGetLen < 0 {
+		return nil, fmt.Errorf("Illegal URL, how did we get here?")
+	}
 
 	return &UpstreamFetcher{
 		upstreamUrl,
@@ -47,7 +55,7 @@ func (uf *UpstreamFetcher) ocspPost(ctx context.Context, ocspReq []byte) ([]byte
 	}
 
 	uf.setHeaders(&req.Header)
-	req.Header.Set("Content-Type", "application/ocsp-request")
+	req.Header.Set("Content-Type", MimeOcspRequest)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -58,16 +66,19 @@ func (uf *UpstreamFetcher) ocspPost(ctx context.Context, ocspReq []byte) ([]byte
 	if resp.StatusCode != http.StatusOK {
 		return []byte{}, fmt.Errorf(resp.Status)
 	}
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != MimeOcspResponse {
+		return []byte{}, fmt.Errorf("Unexpected content-type: %s", contentType)
+	}
 
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
 
 func (uf *UpstreamFetcher) ocspGet(ctx context.Context, ocspReq []byte) ([]byte, error) {
-	b64Req := base64.URLEncoding.EncodeToString(ocspReq)
+	b64Req := base64.RawURLEncoding.EncodeToString(ocspReq)
 	url := *uf.upstreamUrl
 	url.Path += "/" + b64Req
-	fmt.Println(url.String())
 	req, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
 	if err != nil {
 		return []byte{}, err
@@ -84,12 +95,21 @@ func (uf *UpstreamFetcher) ocspGet(ctx context.Context, ocspReq []byte) ([]byte,
 		return []byte{}, fmt.Errorf(resp.Status)
 	}
 
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != MimeOcspResponse {
+		return []byte{}, fmt.Errorf("Unexpected content-type: %s", contentType)
+	}
+
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
 
+func (uf *UpstreamFetcher) useGetRequest(ocspReq []byte) bool {
+	return base64.RawURLEncoding.EncodedLen(len(ocspReq)) <= uf.maxGetLen
+}
+
 func (uf *UpstreamFetcher) Fetch(ctx context.Context, ocspReq []byte) ([]byte, error) {
-	if true || base64.URLEncoding.EncodedLen(len(ocspReq)) > uf.maxGetLen {
+	if uf.useGetRequest(ocspReq) {
 		return uf.ocspPost(ctx, ocspReq)
 	}
 	return uf.ocspGet(ctx, ocspReq)
