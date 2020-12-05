@@ -22,7 +22,7 @@ func main() {
 		WithIdentifier("jcj testing").
 		WithListenAddr(":9020").
 		WithRedis("192.168.99.100:6379", time.Second).
-		WithLifespan(4 * 24 * time.Hour).
+		WithCacheLifespan(24 * time.Hour).
 		// Signals are handled in the CLI package
 		Run(context.Background())
 

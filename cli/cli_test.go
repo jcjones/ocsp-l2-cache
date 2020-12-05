@@ -38,7 +38,7 @@ func TestRunWithOnlyListen(t *testing.T) {
 
 func TestRunWithoutRedis(t *testing.T) {
 	err := New().WithUpstreamResponder(fakeIssuerKeyId, "localhost/path").
-		WithLifespan(time.Hour).
+		WithCacheLifespan(time.Hour).
 		WithListenAddr(":12345").Run(context.TODO())
 	if err == nil {
 		t.Fatal("Expected error")
@@ -53,7 +53,7 @@ func TestCheck(t *testing.T) {
 	}
 
 	err := New().WithUpstreamResponder(fakeIssuerKeyId, "localhost/path").
-		WithLifespan(time.Hour).
+		WithCacheLifespan(time.Hour).
 		WithIdentifier("test").
 		WithRedis(setting, time.Hour).
 		WithListenAddr(":12345").Check(context.TODO())

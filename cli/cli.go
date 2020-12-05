@@ -75,7 +75,7 @@ func (cli *CLI) WithRedis(addr string, txTimeout time.Duration) *CLI {
 	return cli
 }
 
-func (cli *CLI) WithLifespan(responseLifespan time.Duration) *CLI {
+func (cli *CLI) WithCacheLifespan(responseLifespan time.Duration) *CLI {
 	cli.lifespan = responseLifespan
 	return cli
 }
