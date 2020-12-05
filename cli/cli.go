@@ -8,7 +8,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/jcjones/ocsp-l2-cache/fetcher"
@@ -127,9 +131,32 @@ func (cli *CLI) Run(ctx context.Context) error {
 		}
 	}
 
-	frontEnd, err := server.NewOcspFrontEnd(cli.listenAddr, store)
+	frontEnd, err := server.NewOcspFrontEnd(store)
 	if err != nil {
 		return err
 	}
-	return frontEnd.ListenAndServe()
+
+	httpServer := &http.Server{
+		Addr: cli.listenAddr,
+	}
+
+	http.HandleFunc("/", frontEnd.HandleQuery)
+	done := make(chan bool)
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		log.Printf("Signal caught, HTTP server shutting down.")
+
+		// We received an interrupt signal, shut down.
+		_ = httpServer.Shutdown(ctx)
+		done <- true
+	}()
+
+	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+	<-done
+	log.Printf("HTTP server offline.")
+	return nil
 }

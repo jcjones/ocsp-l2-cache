@@ -13,8 +13,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
-	"os/signal"
 
 	"github.com/jcjones/ocsp-l2-cache/common"
 	"github.com/jcjones/ocsp-l2-cache/repo"
@@ -22,15 +20,11 @@ import (
 )
 
 type OcspFrontEnd struct {
-	server *http.Server
-	store  *repo.OcspStore
+	store *repo.OcspStore
 }
 
-func NewOcspFrontEnd(listenAddr string, store *repo.OcspStore) (*OcspFrontEnd, error) {
-	server := &http.Server{
-		Addr: listenAddr,
-	}
-	return &OcspFrontEnd{server, store}, nil
+func NewOcspFrontEnd(store *repo.OcspStore) (*OcspFrontEnd, error) {
+	return &OcspFrontEnd{store}, nil
 }
 
 func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http.Request) {
@@ -116,28 +110,6 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 	response.Header().Set(common.HeaderContentType, common.MimeOcspResponse)
 
 	response.Write(responseBody)
-}
-
-func (ocs *OcspFrontEnd) ListenAndServe() error {
-	http.HandleFunc("/", ocs.HandleQuery)
-	done := make(chan bool)
-	go func() {
-		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, os.Interrupt)
-		<-sigint
-		log.Printf("Signal caught, HTTP server shutting down.")
-
-		// We received an interrupt signal, shut down.
-		_ = ocs.server.Shutdown(context.Background())
-		done <- true
-	}()
-
-	if err := ocs.server.ListenAndServe(); err != http.ErrServerClosed {
-		return err
-	}
-	<-done
-	log.Printf("HTTP server offline.")
-	return nil
 }
 
 func (ocs *OcspFrontEnd) isConfiguredIssuer(issuerKeyHash []byte, hashAlgo crypto.Hash) bool {
