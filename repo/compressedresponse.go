@@ -10,8 +10,8 @@ import (
 )
 
 type CompressedResponse struct {
-    RawResp []byte
-    CacheControl, ETag, LastModified, Expires string
+	RawResp                                   []byte
+	CacheControl, ETag, LastModified, Expires string
 }
 
 func NewCompressedResponseFromBinaryString(s string, serial storage.Serial) (CompressedResponse, error) {
@@ -23,19 +23,19 @@ func NewCompressedResponseFromBinaryString(s string, serial storage.Serial) (Com
 }
 
 func NewCompressedResponseFromRawResponseAndHeaders(RawResp []byte, headers map[string]string) (*CompressedResponse, error) {
-	CacheControl, ok :=  headers[common.HeaderCacheControl]
+	CacheControl, ok := headers[common.HeaderCacheControl]
 	if !ok {
 		return nil, fmt.Errorf("Cache-Control header not provided")
 	}
-	ETag, ok :=  headers[common.HeaderETag]
+	ETag, ok := headers[common.HeaderETag]
 	if !ok {
 		return nil, fmt.Errorf("ETag header not provided")
 	}
-	LastModified, ok :=  headers[common.HeaderLastModified]
+	LastModified, ok := headers[common.HeaderLastModified]
 	if !ok {
 		return nil, fmt.Errorf("Last-Modified header not provided")
 	}
-	Expires, ok :=  headers[common.HeaderExpires]
+	Expires, ok := headers[common.HeaderExpires]
 	if !ok {
 		return nil, fmt.Errorf("Expires header not provided")
 	}

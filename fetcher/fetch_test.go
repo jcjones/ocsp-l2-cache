@@ -16,20 +16,13 @@ import (
 	"github.com/jcjones/ocsp-l2-cache/common"
 )
 
-func TestFetchNilUrl(t *testing.T) {
-	_, err := NewUpstreamFetcher(nil, "TestFetchNilUrl")
-	if err == nil {
-		t.Error("Expected error")
-	}
-}
-
 func TestFetch404(t *testing.T) {
 	ts := httptest.NewServer(http.NotFoundHandler())
 	defer ts.Close()
 
 	url, _ := url.Parse(ts.URL)
 
-	f, err := NewUpstreamFetcher(url, "TestFetch404")
+	f, err := NewUpstreamFetcher(*url, "TestFetch404")
 	if err != nil {
 		t.Error(err)
 	}
@@ -59,7 +52,7 @@ func TestFetchNoContentType(t *testing.T) {
 
 	url, _ := url.Parse(ts.URL)
 
-	f, err := NewUpstreamFetcher(url, "TestFetchBogusResponse")
+	f, err := NewUpstreamFetcher(*url, "TestFetchBogusResponse")
 	if err != nil {
 		t.Error(err)
 	}
@@ -86,7 +79,7 @@ func TestUseGetRequest(t *testing.T) {
 	longUrl, _ := url.Parse("http://example.com/" + strings.Repeat("a", 253))
 	brokenlyLongUrl, _ := url.Parse("http://example.com/" + strings.Repeat("a", 254))
 
-	fShort, err := NewUpstreamFetcher(shortUrl, "short")
+	fShort, err := NewUpstreamFetcher(*shortUrl, "short")
 	if err != nil {
 		t.Error(err)
 	}
@@ -97,7 +90,7 @@ func TestUseGetRequest(t *testing.T) {
 		t.Error("Short URLs should use POST with 400-byte OCSP requests")
 	}
 
-	fLong, err := NewUpstreamFetcher(longUrl, "long")
+	fLong, err := NewUpstreamFetcher(*longUrl, "long")
 	if err != nil {
 		t.Error(err)
 	}
@@ -108,7 +101,7 @@ func TestUseGetRequest(t *testing.T) {
 		t.Error("Long URLs should use POST with 400-byte OCSP requests")
 	}
 
-	_, err = NewUpstreamFetcher(brokenlyLongUrl, "broken")
+	_, err = NewUpstreamFetcher(*brokenlyLongUrl, "broken")
 	if err == nil {
 		t.Error("Don't allow brokenly-long URLs")
 	}
@@ -135,7 +128,7 @@ func TestFetchRelevantHeaders(t *testing.T) {
 
 	url, _ := url.Parse(ts.URL)
 
-	f, err := NewUpstreamFetcher(url, "TestFetchRelevantHeaders")
+	f, err := NewUpstreamFetcher(*url, "TestFetchRelevantHeaders")
 	if err != nil {
 		t.Error(err)
 	}

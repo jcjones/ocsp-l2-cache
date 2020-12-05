@@ -40,16 +40,12 @@ func getRelevantHeaders(h http.Header) map[string]string {
 }
 
 type UpstreamFetcher struct {
-	upstreamUrl *url.URL
+	upstreamUrl url.URL
 	maxGetLen   int
 	identifier  string
 }
 
-func NewUpstreamFetcher(upstreamUrl *url.URL, identifier string) (*UpstreamFetcher, error) {
-	if upstreamUrl == nil {
-		return nil, fmt.Errorf("Upstream URL must not be nil")
-	}
-
+func NewUpstreamFetcher(upstreamUrl url.URL, identifier string) (*UpstreamFetcher, error) {
 	maxGetLen := 254 - len(upstreamUrl.Path)
 	if maxGetLen < 0 {
 		return nil, fmt.Errorf("Illegal URL, how did we get here?")
@@ -99,7 +95,7 @@ func (uf *UpstreamFetcher) ocspPost(ctx context.Context, ocspReq []byte) ([]byte
 
 func (uf *UpstreamFetcher) ocspGet(ctx context.Context, ocspReq []byte) ([]byte, map[string]string, error) {
 	b64Req := base64.RawURLEncoding.EncodeToString(ocspReq)
-	url := *uf.upstreamUrl
+	url := uf.upstreamUrl
 	url.Path += "/" + b64Req
 	req, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
 	if err != nil {

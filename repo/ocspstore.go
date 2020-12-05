@@ -17,46 +17,62 @@ import (
 )
 
 type OcspStore struct {
-	uf       *fetcher.UpstreamFetcher
-	cache    storage.RemoteCache
-	lifespan time.Duration
+	responders map[string]fetcher.UpstreamFetcher
+	cache      storage.RemoteCache
+	lifespan   time.Duration
 }
 
-func NewOcspStore(uf *fetcher.UpstreamFetcher, cache storage.RemoteCache, lifespan time.Duration) (*OcspStore, error) {
-	if uf == nil {
-		return nil, fmt.Errorf("Fetcher must not be nil")
-	}
-
+func NewOcspStore(cache storage.RemoteCache, lifespan time.Duration) (*OcspStore, error) {
 	return &OcspStore{
-		uf,
+		make(map[string]fetcher.UpstreamFetcher),
 		cache,
 		lifespan,
 	}, nil
 }
 
+func (c *OcspStore) AddFetcherForIssuer(issuer storage.Issuer, uf *fetcher.UpstreamFetcher) error {
+	if uf == nil {
+		return fmt.Errorf("Fetcher must not be nil")
+	}
+
+	c.responders[issuer.String()] = *uf
+	return nil
+}
+
 func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte) ([]byte, map[string]string, error) {
-	serial, err := storage.NewSerialFromBigInt(req.SerialNumber); if err != nil {
+	issuer := storage.NewIssuerFromRequest(req)
+	uf, ok := c.responders[issuer.String()]
+	if !ok {
+		return nil, nil, UnknownIssuerError
+	}
+
+	serial, err := storage.NewSerialFromBigInt(req.SerialNumber)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	cacheRsp, found, err := c.cache.Get(ctx, serial.BinaryString()); if err != nil {
+	cacheRsp, found, err := c.cache.Get(ctx, serial.BinaryString())
+	if err != nil {
 		return nil, nil, err
 	}
 
 	if found {
-		cr, err := NewCompressedResponseFromBinaryString(cacheRsp, serial); if err != nil {
+		cr, err := NewCompressedResponseFromBinaryString(cacheRsp, serial)
+		if err != nil {
 			return nil, nil, err
 		}
 		return cr.RawResp, cr.Headers(), nil
 	}
 
-	rspBytes, headers, err := c.uf.Fetch(ctx, reqBytes); if err != nil {
+	rspBytes, headers, err := uf.Fetch(ctx, reqBytes)
+	if err != nil {
 		log.Printf("Fetch error: %v", err)
 		return nil, nil, UpstreamError
 	}
 
 	// Don't verify here, use nil as issuer
-	resp, err := ocsp.ParseResponse(rspBytes, nil); if err != nil {
+	resp, err := ocsp.ParseResponse(rspBytes, nil)
+	if err != nil {
 		log.Printf("Parse of upstream response error: %v", err)
 		return nil, nil, UpstreamError
 	}
@@ -64,15 +80,18 @@ func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte)
 	cacheEndTime := resp.ThisUpdate.Add(c.lifespan)
 	remainingLife := time.Until(cacheEndTime)
 
-	cr, err := NewCompressedResponseFromRawResponseAndHeaders(rspBytes, headers); if err != nil {
+	cr, err := NewCompressedResponseFromRawResponseAndHeaders(rspBytes, headers)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	encoded, err := cr.BinaryString(); if err != nil {
+	encoded, err := cr.BinaryString()
+	if err != nil {
 		return nil, nil, err
 	}
 
-	err = c.cache.Set(ctx, serial.BinaryString(), encoded, remainingLife); if err != nil {
+	err = c.cache.Set(ctx, serial.BinaryString(), encoded, remainingLife)
+	if err != nil {
 		return nil, nil, err
 	}
 

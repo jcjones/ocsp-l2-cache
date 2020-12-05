@@ -24,32 +24,38 @@ func TestRequiredHeaders(t *testing.T) {
 
 	binString := []byte("hey")
 
-	_, err := NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err == nil {
-		t.Error("Expected an error!")	
+	_, err := NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err == nil {
+		t.Error("Expected an error!")
 	}
 
 	h[common.HeaderETag] = "etag"
-	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err == nil {
-		t.Error("Expected an error!")	
+	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err == nil {
+		t.Error("Expected an error!")
 	}
 
 	h[common.HeaderExpires] = "expires"
-	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err == nil {
-		t.Error("Expected an error!")	
+	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err == nil {
+		t.Error("Expected an error!")
 	}
 
 	h[common.HeaderLastModified] = "modified"
-	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err == nil {
-		t.Error("Expected an error!")	
+	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err == nil {
+		t.Error("Expected an error!")
 	}
 
 	h["irrelevant-header"] = "still shouldn't work"
-	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err == nil {
-		t.Error("Expected an error!")	
+	_, err = NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err == nil {
+		t.Error("Expected an error!")
 	}
 
 	h[common.HeaderCacheControl] = "control"
-	cr, err := NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err != nil {
+	cr, err := NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err != nil {
 		t.Error(err)
 	}
 
@@ -67,19 +73,22 @@ func TestRoundtrip(t *testing.T) {
 	h[common.HeaderCacheControl] = "control"
 
 	binString := []byte("hey")
-	cr, err := NewCompressedResponseFromRawResponseAndHeaders(binString, h); if err != nil {
+	cr, err := NewCompressedResponseFromRawResponseAndHeaders(binString, h)
+	if err != nil {
 		t.Error(err)
 	}
 
-	encoded, err := cr.BinaryString(); if err != nil {
+	encoded, err := cr.BinaryString()
+	if err != nil {
 		t.Error(err)
 	}
 
-	cr2, err := NewCompressedResponseFromBinaryString(encoded, storage.NewSerialFromHex("de4d")); if err != nil {
+	cr2, err := NewCompressedResponseFromBinaryString(encoded, storage.NewSerialFromHex("de4d"))
+	if err != nil {
 		t.Error(err)
 	}
 
 	if !reflect.DeepEqual(*cr, cr2) {
 		t.Errorf("Expected equality between %+v and %+v", cr, cr2)
-	}	
+	}
 }

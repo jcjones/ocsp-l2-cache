@@ -6,6 +6,8 @@ package repo
 
 const UpstreamError = OcspStoreError("upstream")
 
+const UnknownIssuerError = OcspStoreError("unknown issuer")
+
 type OcspStoreError string
 
 func (e OcspStoreError) Error() string { return string(e) }

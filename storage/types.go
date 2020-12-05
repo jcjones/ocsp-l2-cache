@@ -7,7 +7,6 @@ package storage
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
@@ -16,6 +15,8 @@ import (
 	"fmt"
 	"math/big"
 	"time"
+
+	"golang.org/x/crypto/ocsp"
 )
 
 type DocumentType int
@@ -30,60 +31,41 @@ type RemoteCache interface {
 }
 
 type Issuer struct {
-	id   *string
 	spki SPKI
 }
 
-func NewIssuer(aCert *x509.Certificate) Issuer {
+func (o Issuer) String() string {
+	return o.spki.String()
+}
+
+func NewIssuerFromRequest(aReq *ocsp.Request) Issuer {
 	obj := Issuer{
-		id:   nil,
-		spki: SPKI{aCert.RawSubjectPublicKeyInfo},
+		spki: SPKI(aReq.IssuerKeyHash),
 	}
 	return obj
 }
 
-func NewIssuerFromString(aStr string) Issuer {
-	obj := Issuer{
-		id: &aStr,
+func NewIssuerFromHexKeyId(s string) (*Issuer, error) {
+	decoded, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
 	}
-	return obj
-}
-
-func (o *Issuer) ID() string {
-	if o.id == nil {
-		encodedDigest := o.spki.Sha256DigestURLEncodedBase64()
-		o.id = &encodedDigest
+	if len(decoded) != 20 {
+		return nil, fmt.Errorf("Key IDs are 20 bytes")
 	}
-	return *o.id
+	return &Issuer{
+		spki: SPKI(decoded),
+	}, nil
 }
 
-func (o *Issuer) MarshalJSON() ([]byte, error) {
-	if o.id == nil {
-		_ = o.ID()
-	}
-	return json.Marshal(o.id)
-}
-
-func (o *Issuer) UnmarshalJSON(data []byte) error {
-	return json.Unmarshal(data, &o.id)
-}
-
-type SPKI struct {
-	spki []byte
-}
+type SPKI []byte
 
 func (o SPKI) ID() string {
-	return base64.URLEncoding.EncodeToString(o.spki)
+	return base64.URLEncoding.EncodeToString(o)
 }
 
 func (o SPKI) String() string {
-	return hex.EncodeToString(o.spki)
-}
-
-func (o SPKI) Sha256DigestURLEncodedBase64() string {
-	binaryDigest := sha256.Sum256(o.spki)
-	encodedDigest := base64.URLEncoding.EncodeToString(binaryDigest[:])
-	return encodedDigest
+	return hex.EncodeToString(o)
 }
 
 type Serial struct {

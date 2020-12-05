@@ -17,15 +17,20 @@ import (
 	"github.com/jcjones/ocsp-l2-cache/storage"
 )
 
+type Responder struct {
+	issuer       storage.Issuer
+	responderUrl url.URL
+}
+
 // CLI holds state for a run of the tool; use the Run method to execute it. Can
 // run more than once.
 type CLI struct {
-	identifier     string
-	listenAddr     string
-	redisAddr      string
-	redisTxTimeout time.Duration
-	lifespan       time.Duration
-	upstreamUrl    *url.URL
+	identifier         string
+	listenAddr         string
+	redisAddr          string
+	redisTxTimeout     time.Duration
+	lifespan           time.Duration
+	upstreamResponders []Responder
 }
 
 // New constructs a Command Line Interface handler. Use its methods to configure
@@ -34,13 +39,22 @@ func New() *CLI {
 	return &CLI{}
 }
 
-// WithUpstreamResponderURL sets the URL of the upstream responder to query.
-func (cli *CLI) WithUpstreamResponderURL(respUrl string) *CLI {
-	u, err := url.Parse(respUrl)
+// WithUpstreamResponder sets the URL of the upstream responder to query.
+func (cli *CLI) WithUpstreamResponder(issuerId string, respUrl string) *CLI {
+	rurl, err := url.Parse(respUrl)
 	if err != nil {
 		panic(err)
 	}
-	cli.upstreamUrl = u
+	issuer, err := storage.NewIssuerFromHexKeyId(issuerId)
+	if err != nil {
+		panic(err)
+	}
+	r := Responder{
+		issuer:       *issuer,
+		responderUrl: *rurl,
+	}
+
+	cli.upstreamResponders = append(cli.upstreamResponders, r)
 	return cli
 }
 
@@ -70,7 +84,7 @@ func (cli *CLI) Check(ctx context.Context) error {
 	if cli.listenAddr == "" {
 		return fmt.Errorf("Must set listen address")
 	}
-	if cli.upstreamUrl == nil {
+	if len(cli.upstreamResponders) < 1 {
 		return fmt.Errorf("Must set upstream URL")
 	}
 	if cli.redisAddr == "" || cli.redisTxTimeout == 0 {
@@ -92,18 +106,27 @@ func (cli *CLI) Run(ctx context.Context) error {
 		return err
 	}
 
-	upstreamFetcher, err := fetcher.NewUpstreamFetcher(cli.upstreamUrl, cli.identifier)
-	if err != nil {
-		return err
-	}
 	remoteCache, err := storage.NewRedisCache(ctx, cli.redisAddr, cli.redisTxTimeout)
 	if err != nil {
 		return err
 	}
-	store, err := repo.NewOcspStore(upstreamFetcher, remoteCache, cli.lifespan)
+
+	store, err := repo.NewOcspStore(remoteCache, cli.lifespan)
 	if err != nil {
 		return err
 	}
+
+	for _, r := range cli.upstreamResponders {
+		upstreamFetcher, err := fetcher.NewUpstreamFetcher(r.responderUrl, cli.identifier)
+		if err != nil {
+			return err
+		}
+		err = store.AddFetcherForIssuer(r.issuer, upstreamFetcher)
+		if err != nil {
+			return err
+		}
+	}
+
 	frontEnd, err := server.NewOcspFrontEnd(cli.listenAddr, store)
 	if err != nil {
 		return err

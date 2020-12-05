@@ -39,21 +39,23 @@ Tqhe91GhlQ==
 -----END CERTIFICATE-----`
 )
 
-func TestIssuerLazyInit(t *testing.T) {
-	i := Issuer{
-		id:   nil,
-		spki: SPKI{[]byte{0xFF}},
-	}
-	if i.id != nil {
-		t.Fatal("Should start with a nil id")
+func TestIssuerHex(t *testing.T) {
+	_, err := NewIssuerFromHexKeyId("what?")
+	if err == nil {
+		t.Error("not hex, should have failed")
 	}
 
-	if i.ID() != "qBAK5qoZQNC2Y7sxzUZhQuu9vVGHExuS2TgYmHgy64k=" {
-		t.Errorf("Unexpected encoding: %s", i.ID())
+	_, err = NewIssuerFromHexKeyId("abcd")
+	if err == nil {
+		t.Error("not long enough, should have failed")
 	}
 
-	if i.id == nil {
-		t.Error("ID should no longer be nil")
+	i, err := NewIssuerFromHexKeyId("142EB317B75856CBAE500940E61FAF9D8B14C2C6")
+	if err != nil {
+		t.Error(err)
+	}
+	if i.spki.String() != "142eb317b75856cbae500940e61faf9d8b14c2c6" {
+		t.Errorf("Unexpected value: %+v", i.spki.String())
 	}
 }
 

@@ -17,7 +17,8 @@ import (
 func main() {
 	// TODO: pull in an argparse
 	err := cli.New().
-		WithUpstreamResponderURL("http://ocsp.int-x3.letsencrypt.org").
+		WithUpstreamResponder("A84A6A63047DDDBAE6D139B7A64565EFF3A8ECA1", "http://ocsp.int-x3.letsencrypt.org").
+		WithUpstreamResponder("142EB317B75856CBAE500940E61FAF9D8B14C2C6", "http://r3.o.lencr.org").
 		WithIdentifier("jcj testing").
 		WithListenAddr(":9020").
 		WithRedis("192.168.99.100:6379", time.Second).
