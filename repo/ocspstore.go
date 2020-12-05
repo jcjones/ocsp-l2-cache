@@ -34,41 +34,47 @@ func NewOcspStore(uf *fetcher.UpstreamFetcher, cache storage.RemoteCache, lifesp
 	}, nil
 }
 
-func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte) ([]byte, error) {
-	serial, err := storage.NewSerialFromBigInt(req.SerialNumber)
-	if err != nil {
-		return nil, err
+func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte) ([]byte, map[string]string, error) {
+	serial, err := storage.NewSerialFromBigInt(req.SerialNumber); if err != nil {
+		return nil, nil, err
 	}
 
-	cacheRsp, found, err := c.cache.Get(ctx, serial.BinaryString())
-	if err != nil {
-		return nil, err
+	cacheRsp, found, err := c.cache.Get(ctx, serial.BinaryString()); if err != nil {
+		return nil, nil, err
 	}
 
 	if found {
-		return []byte(cacheRsp), nil
+		cr, err := NewCompressedResponseFromBinaryString(cacheRsp, serial); if err != nil {
+			return nil, nil, err
+		}
+		return cr.RawResp, cr.Headers(), nil
 	}
 
-	rspBytes, err := c.uf.Fetch(ctx, reqBytes)
-	if err != nil {
+	rspBytes, headers, err := c.uf.Fetch(ctx, reqBytes); if err != nil {
 		log.Printf("Fetch error: %v", err)
-		return nil, UpstreamError
+		return nil, nil, UpstreamError
 	}
 
 	// Don't verify here, use nil as issuer
-	resp, err := ocsp.ParseResponse(rspBytes, nil)
-	if err != nil {
+	resp, err := ocsp.ParseResponse(rspBytes, nil); if err != nil {
 		log.Printf("Parse of upstream response error: %v", err)
-		return nil, UpstreamError
+		return nil, nil, UpstreamError
 	}
 
 	cacheEndTime := resp.ThisUpdate.Add(c.lifespan)
 	remainingLife := time.Until(cacheEndTime)
 
-	err = c.cache.Set(ctx, serial.BinaryString(), string(rspBytes), remainingLife)
-	if err != nil {
-		return nil, err
+	cr, err := NewCompressedResponseFromRawResponseAndHeaders(rspBytes, headers); if err != nil {
+		return nil, nil, err
 	}
 
-	return rspBytes, nil
+	encoded, err := cr.BinaryString(); if err != nil {
+		return nil, nil, err
+	}
+
+	err = c.cache.Set(ctx, serial.BinaryString(), encoded, remainingLife); if err != nil {
+		return nil, nil, err
+	}
+
+	return rspBytes, headers, nil
 }

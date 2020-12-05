@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/jcjones/ocsp-l2-cache/common"
 )
 
 func TestFetchNilUrl(t *testing.T) {
@@ -32,7 +34,7 @@ func TestFetch404(t *testing.T) {
 		t.Error(err)
 	}
 
-	v, err := f.ocspGet(context.TODO(), []byte{})
+	v, _, err := f.ocspGet(context.TODO(), []byte{})
 	if err == nil {
 		t.Error("Expected error")
 	}
@@ -40,7 +42,7 @@ func TestFetch404(t *testing.T) {
 		t.Error("Expected no response")
 	}
 
-	v, err = f.ocspPost(context.TODO(), []byte{})
+	v, _, err = f.ocspPost(context.TODO(), []byte{})
 	if err == nil {
 		t.Error("Expected error")
 	}
@@ -62,7 +64,7 @@ func TestFetchNoContentType(t *testing.T) {
 		t.Error(err)
 	}
 
-	v, err := f.ocspGet(context.TODO(), []byte{})
+	v, _, err := f.ocspGet(context.TODO(), []byte{})
 	if err == nil {
 		t.Error("Expected error")
 	}
@@ -70,7 +72,7 @@ func TestFetchNoContentType(t *testing.T) {
 		t.Error("Expected no response")
 	}
 
-	v, err = f.ocspPost(context.TODO(), []byte{})
+	v, _, err = f.ocspPost(context.TODO(), []byte{})
 	if err == nil {
 		t.Error("Expected error")
 	}
@@ -110,4 +112,44 @@ func TestUseGetRequest(t *testing.T) {
 	if err == nil {
 		t.Error("Don't allow brokenly-long URLs")
 	}
+}
+
+func checkHeader(t *testing.T, h map[string]string, k string) {
+	_, ok := h[k]
+	if !ok {
+		t.Errorf("Expected %s got %+v", k, h)
+	}
+}
+
+func TestFetchRelevantHeaders(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("irrelevant", "stuff")
+		w.Header().Add(common.HeaderCacheControl, "ok")
+		w.Header().Add(common.HeaderETag, "ok")
+		w.Header().Add(common.HeaderLastModified, "ok")
+		w.Header().Add(common.HeaderExpires, "ok")
+		w.Header().Add(common.HeaderContentType, common.MimeOcspResponse)
+		fmt.Fprintln(w, "bogus data")
+	}))
+	defer ts.Close()
+
+	url, _ := url.Parse(ts.URL)
+
+	f, err := NewUpstreamFetcher(url, "TestFetchRelevantHeaders")
+	if err != nil {
+		t.Error(err)
+	}
+
+	_, h, err := f.ocspGet(context.TODO(), []byte{})
+	if err != nil {
+		t.Error(err)
+	}
+	if len(h) != 4 {
+		t.Errorf("Expected 4 headers, got %d %+v", len(h), h)
+	}
+
+	checkHeader(t, h, "Cache-Control")
+	checkHeader(t, h, "ETag")
+	checkHeader(t, h, "Last-Modified")
+	checkHeader(t, h, "Expires")
 }

@@ -13,12 +13,31 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/jcjones/ocsp-l2-cache/common"
 )
 
-const (
-	MimeOcspResponse = "application/ocsp-response"
-	MimeOcspRequest = "application/ocsp-request"
+var (
+	RelevantHeaders = []string{
+		common.HeaderCacheControl,
+		common.HeaderETag,
+		common.HeaderLastModified,
+		common.HeaderExpires,
+	}
 )
+
+func getRelevantHeaders(h http.Header) map[string]string {
+	headers := make(map[string]string)
+
+	for _, k := range RelevantHeaders {
+		v := h.Get(k)
+		if v != "" {
+			headers[k] = v
+		}
+	}
+
+	return headers
+}
 
 type UpstreamFetcher struct {
 	upstreamUrl *url.URL
@@ -47,68 +66,74 @@ func (uf *UpstreamFetcher) setHeaders(h *http.Header) {
 	h.Add("X-Ocsp-L2-Cache", uf.identifier)
 }
 
-func (uf *UpstreamFetcher) ocspPost(ctx context.Context, ocspReq []byte) ([]byte, error) {
+func (uf *UpstreamFetcher) ocspPost(ctx context.Context, ocspReq []byte) ([]byte, map[string]string, error) {
 	body := bytes.NewReader(ocspReq)
 	req, err := http.NewRequestWithContext(ctx, "POST", uf.upstreamUrl.String(), body)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, nil, err
 	}
 
 	uf.setHeaders(&req.Header)
-	req.Header.Set("Content-Type", MimeOcspRequest)
+	req.Header.Set(common.HeaderContentType, common.MimeOcspRequest)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return []byte{}, fmt.Errorf(resp.Status)
+		return []byte{}, nil, fmt.Errorf(resp.Status)
 	}
-	contentType := resp.Header.Get("Content-Type")
-	if contentType != MimeOcspResponse {
-		return []byte{}, fmt.Errorf("Unexpected content-type: %s", contentType)
+	contentType := resp.Header.Get(common.HeaderContentType)
+	if contentType != common.MimeOcspResponse {
+		return []byte{}, nil, fmt.Errorf("Unexpected content-type: %s", contentType)
 	}
+
+	headers := getRelevantHeaders(resp.Header)
 
 	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	data, err := ioutil.ReadAll(resp.Body)
+	return data, headers, err
 }
 
-func (uf *UpstreamFetcher) ocspGet(ctx context.Context, ocspReq []byte) ([]byte, error) {
+func (uf *UpstreamFetcher) ocspGet(ctx context.Context, ocspReq []byte) ([]byte, map[string]string, error) {
 	b64Req := base64.RawURLEncoding.EncodeToString(ocspReq)
 	url := *uf.upstreamUrl
 	url.Path += "/" + b64Req
 	req, err := http.NewRequestWithContext(ctx, "GET", url.String(), nil)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, nil, err
 	}
 
 	uf.setHeaders(&req.Header)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return []byte{}, err
+		return []byte{}, nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return []byte{}, fmt.Errorf(resp.Status)
+		return []byte{}, nil, fmt.Errorf(resp.Status)
 	}
 
-	contentType := resp.Header.Get("Content-Type")
-	if contentType != MimeOcspResponse {
-		return []byte{}, fmt.Errorf("Unexpected content-type: %s", contentType)
+	contentType := resp.Header.Get(common.HeaderContentType)
+	if contentType != common.MimeOcspResponse {
+		return []byte{}, nil, fmt.Errorf("Unexpected content-type: %s", contentType)
 	}
+
+	headers := getRelevantHeaders(resp.Header)
 
 	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	data, err := ioutil.ReadAll(resp.Body)
+	return data, headers, err
 }
 
 func (uf *UpstreamFetcher) useGetRequest(ocspReq []byte) bool {
 	return base64.RawURLEncoding.EncodedLen(len(ocspReq)) <= uf.maxGetLen
 }
 
-func (uf *UpstreamFetcher) Fetch(ctx context.Context, ocspReq []byte) ([]byte, error) {
+func (uf *UpstreamFetcher) Fetch(ctx context.Context, ocspReq []byte) ([]byte, map[string]string, error) {
 	if uf.useGetRequest(ocspReq) {
 		return uf.ocspPost(ctx, ocspReq)
 	}
