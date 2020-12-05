@@ -22,7 +22,7 @@ func getRedisCache(tb testing.TB) *RedisCache {
 
 	rc, err := NewRedisCache(context.TODO(), setting, time.Second)
 	if err != nil {
-		tb.Errorf("Couldn't construct RedisCache: %v", err)
+		tb.Fatalf("Couldn't construct RedisCache: %v", err)
 	}
 	return rc
 }

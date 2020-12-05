@@ -20,7 +20,7 @@ func main() {
 		WithUpstreamResponderURL("http://ocsp.int-x3.letsencrypt.org").
 		WithIdentifier("jcj testing").
 		WithListenAddr(":9020").
-		WithRedis("10.0.0.209:6379", time.Second).
+		WithRedis("192.168.99.100:6379", time.Second).
 		WithLifespan(4 * 24 * time.Hour).
 		// Signals are handled in the CLI package
 		Run(context.Background())
