@@ -6,7 +6,6 @@ package server
 
 import (
 	"context"
-	"crypto"
 	"encoding/base64"
 	"encoding/hex"
 	"io/ioutil"
@@ -38,6 +37,7 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 	// is not found or an error is returned. If a response if found the header
 	// will be altered to contain the proper max-age and modifiers.
 	response.Header().Set("Cache-Control", "max-age=0, no-cache")
+	response.Header().Set(common.HeaderContentType, common.MimeOcspResponse)
 
 	// Read response from request
 	var requestBody []byte
@@ -69,13 +69,13 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 		}
 		requestBody, err = base64.StdEncoding.DecodeString(string(base64RequestBytes))
 		if err != nil {
-			response.WriteHeader(http.StatusBadRequest)
+			ocs.malformedRequest(response)
 			return
 		}
 	case "POST":
 		requestBody, err = ioutil.ReadAll(http.MaxBytesReader(nil, request.Body, 10000))
 		if err != nil {
-			response.WriteHeader(http.StatusBadRequest)
+			ocs.malformedRequest(response)
 			return
 		}
 	default:
@@ -86,13 +86,7 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 	req, err := ocsp.ParseRequest(requestBody)
 	if err != nil {
 		log.Printf("Unable to parse: %v\n%s", err, hex.Dump(requestBody))
-		http.Error(response, "Unable to parse", http.StatusBadRequest)
-		return
-	}
-
-	if !ocs.isConfiguredIssuer(req.IssuerKeyHash, req.HashAlgorithm) {
-		log.Printf("Unknown issuer: %s {%+v}", req.IssuerKeyHash, req)
-		ocs.unknownIssuer(response)
+		ocs.malformedRequest(response)
 		return
 	}
 
@@ -100,6 +94,10 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 	if err == repo.UpstreamError {
 		log.Printf("Upstream error: %s {%+v}", err, req)
 		ocs.upstreamError(response)
+		return
+	} else if err == repo.UnknownIssuerError {
+		log.Printf("Unknown issuer: %s {%+v}", req.IssuerKeyHash, req)
+		ocs.unknownIssuer(response)
 		return
 	} else if err != nil {
 		log.Printf("Unable to obtain response: %v", err)
@@ -110,22 +108,21 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 	for k, v := range headers {
 		response.Header().Set(k, v)
 	}
-	response.Header().Set(common.HeaderContentType, common.MimeOcspResponse)
 
 	response.Write(responseBody)
 }
 
-func (ocs *OcspFrontEnd) isConfiguredIssuer(issuerKeyHash []byte, hashAlgo crypto.Hash) bool {
-	// TODO
-	return true
+func (ocs *OcspFrontEnd) malformedRequest(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write(ocsp.MalformedRequestErrorResponse)
 }
 
 func (ocs *OcspFrontEnd) unknownIssuer(w http.ResponseWriter) {
-	// TODO
-	http.Error(w, "TODO: return a real unknown issuer response", http.StatusNotFound)
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write(ocsp.UnauthorizedErrorResponse)
 }
 
 func (ocs *OcspFrontEnd) upstreamError(w http.ResponseWriter) {
-	// TODO
-	http.Error(w, "TODO: return a real upstream error response", http.StatusServiceUnavailable)
+	w.WriteHeader(http.StatusServiceUnavailable)
+	w.Write(ocsp.InternalErrorErrorResponse)
 }
