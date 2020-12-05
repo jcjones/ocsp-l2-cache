@@ -61,8 +61,12 @@ func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte)
 		if err != nil {
 			return nil, nil, err
 		}
+
+		log.Printf("issuer %s serial %s hit", issuer.String(), serial.String())
 		return cr.RawResp, cr.Headers(), nil
 	}
+
+	log.Printf("issuer %s serial %s miss", issuer.String(), serial.String())
 
 	rspBytes, headers, err := uf.Fetch(ctx, reqBytes)
 	if err != nil {

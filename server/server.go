@@ -93,8 +93,6 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 		return
 	}
 
-	log.Printf("Request: %+v", req)
-
 	if !ocs.isConfiguredIssuer(req.IssuerKeyHash, req.HashAlgorithm) {
 		log.Printf("Unknown issuer: %s {%+v}", req.IssuerKeyHash, req)
 		ocs.unknownIssuer(response)
