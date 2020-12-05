@@ -33,6 +33,7 @@ type CLI struct {
 	listenAddr         string
 	redisAddr          string
 	redisTxTimeout     time.Duration
+	deadline           time.Duration
 	lifespan           time.Duration
 	upstreamResponders []Responder
 }
@@ -84,6 +85,11 @@ func (cli *CLI) WithCacheLifespan(responseLifespan time.Duration) *CLI {
 	return cli
 }
 
+func (cli *CLI) WithConnectionDeadline(deadline time.Duration) *CLI {
+	cli.deadline = deadline
+	return cli
+}
+
 func (cli *CLI) Check(ctx context.Context) error {
 	if cli.listenAddr == "" {
 		return fmt.Errorf("Must set listen address")
@@ -96,6 +102,9 @@ func (cli *CLI) Check(ctx context.Context) error {
 	}
 	if cli.lifespan == 0 {
 		return fmt.Errorf("Must set a response lifespan")
+	}
+	if cli.deadline == 0 {
+		return fmt.Errorf("Must set a query deadline")
 	}
 	if cli.identifier == "" {
 		return fmt.Errorf("Must set an identifier")
@@ -115,10 +124,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 		return err
 	}
 
-	store, err := repo.NewOcspStore(remoteCache, cli.lifespan)
-	if err != nil {
-		return err
-	}
+	store := repo.NewOcspStore(remoteCache, cli.lifespan, time.Hour)
 
 	for _, r := range cli.upstreamResponders {
 		upstreamFetcher, err := fetcher.NewUpstreamFetcher(r.responderUrl, cli.identifier)
@@ -131,7 +137,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 		}
 	}
 
-	frontEnd, err := server.NewOcspFrontEnd(store)
+	frontEnd, err := server.NewOcspFrontEnd(store, cli.deadline)
 	if err != nil {
 		return err
 	}

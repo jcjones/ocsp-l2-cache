@@ -20,14 +20,16 @@ type OcspStore struct {
 	responders map[string]fetcher.UpstreamFetcher
 	cache      storage.RemoteCache
 	lifespan   time.Duration
+	minimumCacheLife time.Duration
 }
 
-func NewOcspStore(cache storage.RemoteCache, lifespan time.Duration) (*OcspStore, error) {
-	return &OcspStore{
+func NewOcspStore(cache storage.RemoteCache, lifespan time.Duration, minimumCacheLife time.Duration) OcspStore {
+	return OcspStore{
 		make(map[string]fetcher.UpstreamFetcher),
 		cache,
 		lifespan,
-	}, nil
+		minimumCacheLife,
+	}
 }
 
 func (c *OcspStore) AddFetcherForIssuer(issuer storage.Issuer, uf *fetcher.UpstreamFetcher) error {
@@ -83,6 +85,9 @@ func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte)
 
 	cacheEndTime := resp.ThisUpdate.Add(c.lifespan)
 	remainingLife := time.Until(cacheEndTime)
+	if remainingLife < c.minimumCacheLife {
+		remainingLife = c.minimumCacheLife
+	}
 
 	cr, err := NewCompressedResponseFromRawResponseAndHeaders(rspBytes, headers)
 	if err != nil {

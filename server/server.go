@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 	"net/url"
 
 	"github.com/jcjones/ocsp-l2-cache/common"
@@ -20,15 +21,17 @@ import (
 )
 
 type OcspFrontEnd struct {
-	store *repo.OcspStore
+	store repo.OcspStore
+	deadline time.Duration
 }
 
-func NewOcspFrontEnd(store *repo.OcspStore) (*OcspFrontEnd, error) {
-	return &OcspFrontEnd{store}, nil
+func NewOcspFrontEnd(store repo.OcspStore, deadline time.Duration) (*OcspFrontEnd, error) {
+	return &OcspFrontEnd{store, deadline}, nil
 }
 
 func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http.Request) {
-	ctx := context.Background()
+	ctx, cancelFunc := context.WithTimeout(context.Background(), ocs.deadline)
+	defer cancelFunc()
 
 	// By default we set a 'max-age=0, no-cache' Cache-Control header, this
 	// is only returned to the client if a valid authorized OCSP response
