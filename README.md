@@ -10,6 +10,8 @@ Redis 5
 
 TBD. Currently edit `main.go`
 
+An arbitrary number of these l2-cache instances can point to a Redis cluster for horizontal scaling. Once you run into issues at the Redis cluster, you can just construct another whole cluster.
+
 ## Interacting
 
 Probably easiest to use tools that can override the responder URL, like OpenSSL or [jcjones/ocspchecker](https://github.com/jcjones/ocspchecker) (assuming the cache is running on `localhost:9020`):
@@ -29,4 +31,6 @@ ocspchecker -nostaple -responder http://localhost:9020 -url https://letsencrypt.
 - [ ] Don't store the whole headers, synthesize everything we can to reduce storage needs
 - [ ] Link-failure tests
 - [ ] OcspStore tests with the mock cache
+- [ ] Admin API interface for pushing new cache entries, flushing entries
+- [ ] Deployment guidance
 - ... more in the issues
