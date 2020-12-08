@@ -17,9 +17,9 @@ import (
 )
 
 type OcspStore struct {
-	responders map[string]fetcher.UpstreamFetcher
-	cache      storage.RemoteCache
-	lifespan   time.Duration
+	responders       map[string]fetcher.UpstreamFetcher
+	cache            storage.RemoteCache
+	lifespan         time.Duration
 	minimumCacheLife time.Duration
 }
 

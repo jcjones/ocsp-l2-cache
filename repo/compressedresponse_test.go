@@ -13,6 +13,7 @@ import (
 )
 
 func TestInvalidBinaryString(t *testing.T) {
+	t.Parallel()
 	_, err := NewCompressedResponseFromBinaryString("this is binary, right?", storage.NewSerialFromHex("de4d"))
 	if err == nil {
 		t.Error("Expected an error!")
@@ -20,6 +21,7 @@ func TestInvalidBinaryString(t *testing.T) {
 }
 
 func TestRequiredHeaders(t *testing.T) {
+	t.Parallel()
 	h := make(map[string]string)
 
 	binString := []byte("hey")
@@ -66,6 +68,7 @@ func TestRequiredHeaders(t *testing.T) {
 }
 
 func TestRoundtrip(t *testing.T) {
+	t.Parallel()
 	h := make(map[string]string)
 	h[common.HeaderETag] = "etag"
 	h[common.HeaderExpires] = "expires"

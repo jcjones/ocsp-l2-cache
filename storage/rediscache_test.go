@@ -75,24 +75,6 @@ func Test_RedisExpiration(t *testing.T) {
 	}
 }
 
-func isKeyPatternExpected(t *testing.T, rc *RedisCache, pattern string, expectedCount int) {
-	ctx := context.TODO()
-	c := make(chan string)
-	go func() {
-		err := rc.KeysToChan(ctx, pattern, c)
-		if err != nil {
-			t.Error(err)
-		}
-	}()
-	var count int
-	for range c {
-		count++
-	}
-	if count != expectedCount {
-		t.Errorf("Expected %d entries matching %s, got %d", expectedCount, pattern, count)
-	}
-}
-
 func Test_RedisSetIfNotExist(t *testing.T) {
 	ctx := context.TODO()
 	t.Parallel()
