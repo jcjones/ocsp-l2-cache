@@ -138,6 +138,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 
 	remoteCache, err := storage.NewRedisCache(startCtx, cli.redisAddr, cli.redisTxTimeout)
 	if err != nil {
+		cancelFunc()
 		return err
 	}
 	cancelFunc()

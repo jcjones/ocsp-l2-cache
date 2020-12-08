@@ -18,7 +18,7 @@ services:
     image: redis:5
     networks:
      - cachenet
-    ports: 
+    ports:
       - 6379:6379
 
   rsyslog:
@@ -32,4 +32,3 @@ services:
 networks:
   cachenet:
     driver: bridge
-
