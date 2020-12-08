@@ -31,6 +31,7 @@ type Responder struct {
 type CLI struct {
 	identifier         string
 	listenAddr         string
+	healthListenAddr   string
 	redisAddr          string
 	redisTxTimeout     time.Duration
 	deadline           time.Duration
@@ -71,6 +72,11 @@ func (cli *CLI) WithIdentifier(identifier string) *CLI {
 // WithListenAddr sets the address:port on which to listen for queries
 func (cli *CLI) WithListenAddr(addr string) *CLI {
 	cli.listenAddr = addr
+	return cli
+}
+
+func (cli *CLI) WithHealthListenAddr(addr string) *CLI {
+	cli.healthListenAddr = addr
 	return cli
 }
 
@@ -137,12 +143,28 @@ func (cli *CLI) Run(ctx context.Context) error {
 		}
 	}
 
+	// Health monitoring
+	hc := server.NewHealthCheck()
+	healthHandler := http.NewServeMux()
+	healthHandler.HandleFunc("/", hc.HandleQuery)
+
+	healthServer := &http.Server{
+		Handler: healthHandler,
+		Addr: cli.healthListenAddr,
+	}
+	go func() {
+		if err := healthServer.ListenAndServe(); err != http.ErrServerClosed {
+			log.Printf("Couldn't start health server: %v", err)
+		}
+	}()
+
+	// Web-client interaction
 	frontEnd, err := server.NewOcspFrontEnd(store, cli.deadline)
 	if err != nil {
 		return err
 	}
 
-	httpServer := &http.Server{
+	ocspServer := &http.Server{
 		Addr: cli.listenAddr,
 	}
 
@@ -155,11 +177,14 @@ func (cli *CLI) Run(ctx context.Context) error {
 		log.Printf("Signal caught, HTTP server shutting down.")
 
 		// We received an interrupt signal, shut down.
-		_ = httpServer.Shutdown(ctx)
+		_ = ocspServer.Shutdown(ctx)
+		_ = healthServer.Shutdown(ctx)
 		done <- true
 	}()
 
-	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+	log.Printf("OCSP Serving on %v, Health Serving on %v", ocspServer.Addr, healthServer.Addr)
+
+	if err := ocspServer.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
 	<-done
