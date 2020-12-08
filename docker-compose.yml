@@ -7,6 +7,9 @@ services:
       - 8081:8081
     networks:
      - cachenet
+    depends_on:
+      - redis
+      - rsyslog
     environment:
       SyslogProto: tcp
       SyslogAddr: rsyslog:514
@@ -23,8 +26,6 @@ services:
     ports:
       - "514:514/tcp"
       - "514:514/udp"
-    # volumes:
-    #   - ./docker-rsyslog.conf:/etc/rsyslog.conf
     networks:
      - cachenet
 
