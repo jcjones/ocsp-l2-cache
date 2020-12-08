@@ -132,10 +132,16 @@ func (cli *CLI) Run(ctx context.Context) error {
 		return err
 	}
 
-	remoteCache, err := storage.NewRedisCache(ctx, cli.redisAddr, cli.redisTxTimeout)
+	cli.logger.Infof("Connecting to Redis cache at %s, timeout %s", cli.redisAddr, cli.redisTxTimeout)
+
+	startCtx, cancelFunc := context.WithTimeout(ctx, time.Second)
+
+	remoteCache, err := storage.NewRedisCache(startCtx, cli.redisAddr, cli.redisTxTimeout)
 	if err != nil {
+		cancelFunc()
 		return err
 	}
+	cancelFunc()
 
 	store := repo.NewOcspStore(cli.logger, remoteCache, cli.lifespan, time.Hour)
 
@@ -188,6 +194,8 @@ func (cli *CLI) Run(ctx context.Context) error {
 		_ = healthServer.Shutdown(ctx)
 		done <- true
 	}()
+
+	fmt.Println("okay!")
 
 	cli.logger.Infof("OCSP Serving on %v, Health Serving on %v", ocspServer.Addr, healthServer.Addr)
 
