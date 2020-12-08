@@ -1,0 +1,34 @@
+version: "3.8"
+services:
+  l2cache:
+    image: ocsp-l2-cache
+    ports:
+      - 8080:8080
+      - 8081:8081
+    networks:
+     - cachenet
+    environment:
+      SyslogProto: tcp
+      SyslogAddr: rsyslog:514
+
+  redis:
+    image: redis:5
+    networks:
+     - cachenet
+    ports: 
+      - 6379:6379
+
+  rsyslog:
+    image: vimagick/rsyslog
+    ports:
+      - "514:514/tcp"
+      - "514:514/udp"
+    # volumes:
+    #   - ./docker-rsyslog.conf:/etc/rsyslog.conf
+    networks:
+     - cachenet
+
+networks:
+  cachenet:
+    driver: bridge
+
