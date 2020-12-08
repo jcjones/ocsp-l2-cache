@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -17,15 +16,18 @@ import (
 	"github.com/jcjones/ocsp-l2-cache/common"
 	"github.com/jcjones/ocsp-l2-cache/repo"
 	"golang.org/x/crypto/ocsp"
+
+	blog "github.com/letsencrypt/boulder/log"
 )
 
 type OcspFrontEnd struct {
+	logger   blog.Logger
 	store    repo.OcspStore
 	deadline time.Duration
 }
 
-func NewOcspFrontEnd(store repo.OcspStore, deadline time.Duration) (*OcspFrontEnd, error) {
-	return &OcspFrontEnd{store, deadline}, nil
+func NewOcspFrontEnd(logger blog.Logger, store repo.OcspStore, deadline time.Duration) (*OcspFrontEnd, error) {
+	return &OcspFrontEnd{logger, store, deadline}, nil
 }
 
 func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http.Request) {
@@ -85,22 +87,22 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 
 	req, err := ocsp.ParseRequest(requestBody)
 	if err != nil {
-		log.Printf("Unable to parse: %v\n%s", err, hex.Dump(requestBody))
+		ocs.logger.Debugf("Unable to parse: %v\n%s", err, hex.Dump(requestBody))
 		ocs.malformedRequest(response)
 		return
 	}
 
 	responseBody, headers, err := ocs.store.Get(ctx, req, requestBody)
 	if err == repo.UpstreamError {
-		log.Printf("Upstream error: %s {%+v}", err, req)
+		ocs.logger.Errf("Upstream error: %s {%+v}", err, req)
 		ocs.upstreamError(response)
 		return
 	} else if err == repo.UnknownIssuerError {
-		log.Printf("Unknown issuer: %s {%+v}", req.IssuerKeyHash, req)
+		ocs.logger.Debugf("Unknown issuer: %s {%+v}", req.IssuerKeyHash, req)
 		ocs.unknownIssuer(response)
 		return
 	} else if err != nil {
-		log.Printf("Unable to obtain response: %v", err)
+		ocs.logger.Debugf("Unable to obtain response: %v", err)
 		http.Error(response, "Failed", http.StatusInternalServerError)
 		return
 	}
@@ -111,7 +113,7 @@ func (ocs *OcspFrontEnd) HandleQuery(response http.ResponseWriter, request *http
 
 	_, err = response.Write(responseBody)
 	if err != nil {
-		log.Printf("Failure writing response body: %v", err)
+		ocs.logger.Warningf("Failure writing response body: %v", err)
 	}
 }
 
@@ -119,7 +121,7 @@ func (ocs *OcspFrontEnd) malformedRequest(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusBadRequest)
 	_, err := w.Write(ocsp.MalformedRequestErrorResponse)
 	if err != nil {
-		log.Printf("Failure writing malformedRequest error: %v", err)
+		ocs.logger.Warningf("Failure writing malformedRequest error: %v", err)
 	}
 }
 
@@ -127,7 +129,7 @@ func (ocs *OcspFrontEnd) unknownIssuer(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 	_, err := w.Write(ocsp.UnauthorizedErrorResponse)
 	if err != nil {
-		log.Printf("Failure writing unknownIssuer error: %v", err)
+		ocs.logger.Warningf("Failure writing unknownIssuer error: %v", err)
 	}
 }
 
@@ -135,6 +137,6 @@ func (ocs *OcspFrontEnd) upstreamError(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusServiceUnavailable)
 	_, err := w.Write(ocsp.InternalErrorErrorResponse)
 	if err != nil {
-		log.Printf("Failure writing upstreamError error: %v", err)
+		ocs.logger.Warningf("Failure writing upstreamError error: %v", err)
 	}
 }

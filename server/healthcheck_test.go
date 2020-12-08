@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jcjones/ocsp-l2-cache/storage"
+	blog "github.com/letsencrypt/boulder/log"
 )
 
 func TestHealthDown(t *testing.T) {
@@ -14,7 +15,7 @@ func TestHealthDown(t *testing.T) {
 
 	mock := storage.NewMockRemoteCache()
 	mock.Alive = false
-	hc := NewHealthCheck(mock)
+	hc := NewHealthCheck(blog.Get(), mock)
 
 	recorder := httptest.NewRecorder()
 	hc.HandleQuery(recorder, httptest.NewRequest("GET", "/", nil))
@@ -40,7 +41,7 @@ func TestHealthUp(t *testing.T) {
 
 	mock := storage.NewMockRemoteCache()
 	mock.Alive = true
-	hc := NewHealthCheck(mock)
+	hc := NewHealthCheck(blog.Get(), mock)
 
 	recorder := httptest.NewRecorder()
 	hc.HandleQuery(recorder, httptest.NewRequest("GET", "/", nil))
