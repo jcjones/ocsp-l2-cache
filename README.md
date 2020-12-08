@@ -22,6 +22,17 @@ go get github.com/jcjones/ocspchecker
 ocspchecker -nostaple -responder http://localhost:9020 -url https://letsencrypt.org -dump
 ```
 
+## Building and running
+
+Via Docker:
+
+```
+docker build -t ocsp-l2-cache .
+
+docker run --rm ocsp-l2-cache --publish 8080:80 --publish 8081:8080
+```
+
+
 ## TODOs
 
 - [ ] Switch from go-metrics to prometheus
