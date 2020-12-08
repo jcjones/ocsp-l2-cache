@@ -23,7 +23,7 @@ func NewMockRemoteCache() *MockRemoteCache {
 		Data:        make(map[string]string),
 		Expirations: make(map[string]time.Time),
 		Duplicate:   0,
-		Alive: true,
+		Alive:       true,
 	}
 }
 

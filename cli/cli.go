@@ -150,7 +150,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 
 	healthServer := &http.Server{
 		Handler: healthHandler,
-		Addr: cli.healthListenAddr,
+		Addr:    cli.healthListenAddr,
 	}
 	go func() {
 		if err := healthServer.ListenAndServe(); err != http.ErrServerClosed {

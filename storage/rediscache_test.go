@@ -141,7 +141,7 @@ func Test_Info(t *testing.T) {
 	data, err := rc.Info(ctx)
 	if err != nil {
 		t.Error(err)
-	}	
+	}
 	if len(data) == 0 {
 		t.Error("Expected informational output")
 	}

@@ -24,16 +24,18 @@ func NewHealthCheck(cache storage.RemoteCache) *HealthCheck {
 func (hc *HealthCheck) HandleQuery(response http.ResponseWriter, request *http.Request) {
 	data, healtherr := hc.cache.Info(context.Background())
 
-	if healtherr == nil  {
+	if healtherr == nil {
 		response.WriteHeader(200)
-		_, err := response.Write([]byte(fmt.Sprintf("ok: cache is alive\ninfo:\n%v", data))); if err != nil {
+		_, err := response.Write([]byte(fmt.Sprintf("ok: cache is alive\ninfo:\n%v", data)))
+		if err != nil {
 			log.Printf("Couldn't return ok health status: %+v", err)
 		}
 		return
-	} 
+	}
 
 	response.WriteHeader(500)
-	_, err := response.Write([]byte(fmt.Sprintf("failed: %v", healtherr))); if err != nil {
+	_, err := response.Write([]byte(fmt.Sprintf("failed: %v", healtherr)))
+	if err != nil {
 		log.Printf("Couldn't return ok health status: %+v", err)
 	}
 
