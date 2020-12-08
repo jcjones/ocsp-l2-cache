@@ -5,22 +5,36 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/jcjones/ocsp-l2-cache/storage"
 )
 
 type HealthCheck struct {
+	cache storage.RemoteCache
 }
 
-func NewHealthCheck() *HealthCheck {
-	return &HealthCheck{}
+func NewHealthCheck(cache storage.RemoteCache) *HealthCheck {
+	return &HealthCheck{cache}
 }
 
 func (hc *HealthCheck) HandleQuery(response http.ResponseWriter, request *http.Request) {
-	response.WriteHeader(200)
-	_, err := response.Write([]byte(fmt.Sprintf("ok: something")))
-	if err != nil {
+	data, healtherr := hc.cache.Info(context.Background())
+
+	if healtherr == nil  {
+		response.WriteHeader(200)
+		_, err := response.Write([]byte(fmt.Sprintf("ok: cache is alive\ninfo:\n%v", data))); if err != nil {
+			log.Printf("Couldn't return ok health status: %+v", err)
+		}
+		return
+	} 
+
+	response.WriteHeader(500)
+	_, err := response.Write([]byte(fmt.Sprintf("failed: %v", healtherr))); if err != nil {
 		log.Printf("Couldn't return ok health status: %+v", err)
 	}
+
 }

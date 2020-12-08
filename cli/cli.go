@@ -144,7 +144,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 	}
 
 	// Health monitoring
-	hc := server.NewHealthCheck()
+	hc := server.NewHealthCheck(remoteCache)
 	healthHandler := http.NewServeMux()
 	healthHandler.HandleFunc("/", hc.HandleQuery)
 

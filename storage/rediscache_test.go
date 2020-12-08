@@ -132,3 +132,17 @@ func Test_RedisGetSet(t *testing.T) {
 		t.Errorf("Expected data, got %s", v)
 	}
 }
+
+func Test_Info(t *testing.T) {
+	ctx := context.TODO()
+	t.Parallel()
+
+	rc := getRedisCache(t)
+	data, err := rc.Info(ctx)
+	if err != nil {
+		t.Error(err)
+	}	
+	if len(data) == 0 {
+		t.Error("Expected informational output")
+	}
+}
