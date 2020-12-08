@@ -29,12 +29,6 @@ jobs:
             dep ensure
         fi
 
-    - name: Go Formatter
-      uses: sladyn98/auto-go-format@v0.0.1
-
-    - name: Go-linter
-      uses: Jerome1337/golint-action@v1.0.2
-
     - name: Build
       run: go build -v ./...
 
