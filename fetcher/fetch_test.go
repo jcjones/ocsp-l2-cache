@@ -17,6 +17,7 @@ import (
 )
 
 func TestFetch404(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.NotFoundHandler())
 	defer ts.Close()
 
@@ -45,6 +46,7 @@ func TestFetch404(t *testing.T) {
 }
 
 func TestFetchNoContentType(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello")
 	}))
@@ -75,6 +77,7 @@ func TestFetchNoContentType(t *testing.T) {
 }
 
 func TestUseGetRequest(t *testing.T) {
+	t.Parallel()
 	shortUrl, _ := url.Parse("http://example.com/")
 	longUrl, _ := url.Parse("http://example.com/" + strings.Repeat("a", 253))
 	brokenlyLongUrl, _ := url.Parse("http://example.com/" + strings.Repeat("a", 254))
@@ -115,6 +118,7 @@ func checkHeader(t *testing.T, h map[string]string, k string) {
 }
 
 func TestFetchRelevantHeaders(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("irrelevant", "stuff")
 		w.Header().Add(common.HeaderCacheControl, "ok")

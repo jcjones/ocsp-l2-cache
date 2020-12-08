@@ -16,6 +16,7 @@ const (
 )
 
 func TestRunWithoutArgs(t *testing.T) {
+	t.Parallel()
 	err := New().Run(context.TODO())
 	if err == nil {
 		t.Fatal("Expected error")
@@ -23,6 +24,7 @@ func TestRunWithoutArgs(t *testing.T) {
 }
 
 func TestRunWithOnlyUpstream(t *testing.T) {
+	t.Parallel()
 	err := New().WithUpstreamResponder(fakeIssuerKeyId, "localhost/path").Run(context.TODO())
 	if err == nil {
 		t.Fatal("Expected error")
@@ -30,6 +32,7 @@ func TestRunWithOnlyUpstream(t *testing.T) {
 }
 
 func TestRunWithOnlyListen(t *testing.T) {
+	t.Parallel()
 	err := New().WithListenAddr(":12345").Run(context.TODO())
 	if err == nil {
 		t.Fatal("Expected error")
@@ -37,6 +40,7 @@ func TestRunWithOnlyListen(t *testing.T) {
 }
 
 func TestRunWithoutRedis(t *testing.T) {
+	t.Parallel()
 	err := New().WithUpstreamResponder(fakeIssuerKeyId, "localhost/path").
 		WithCacheLifespan(time.Hour).
 		WithListenAddr(":12345").Run(context.TODO())
@@ -46,6 +50,7 @@ func TestRunWithoutRedis(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	setting, ok := os.LookupEnv("RedisHost")
 	if !ok {
 		t.Skipf("RedisHost is not set, unable to run %s. Skipping.", t.Name())

@@ -40,6 +40,7 @@ Tqhe91GhlQ==
 )
 
 func TestIssuerHex(t *testing.T) {
+	t.Parallel()
 	_, err := NewIssuerFromHexKeyId("what?")
 	if err == nil {
 		t.Error("not hex, should have failed")
@@ -60,6 +61,7 @@ func TestIssuerHex(t *testing.T) {
 }
 
 func TestSerial(t *testing.T) {
+	t.Parallel()
 	x := NewSerialFromHex("DEADBEEF")
 	y := Serial{
 		serial: []byte{0xDE, 0xAD, 0xBE, 0xEF},
@@ -82,6 +84,7 @@ func TestSerial(t *testing.T) {
 }
 
 func TestSerialFromCertWithLeadingZeroes(t *testing.T) {
+	t.Parallel()
 	b, _ := pem.Decode([]byte(kLeadingZeroes))
 
 	cert, err := x509.ParseCertificate(b.Bytes)
@@ -104,6 +107,7 @@ func TestSerialFromCertWithLeadingZeroes(t *testing.T) {
 }
 
 func TestSerialJson(t *testing.T) {
+	t.Parallel()
 	serials := []Serial{NewSerialFromHex("ABCDEF"), NewSerialFromHex("001100")}
 	data, err := json.Marshal(serials)
 	if err != nil {
@@ -122,6 +126,7 @@ func TestSerialJson(t *testing.T) {
 }
 
 func TestSerialBigInt(t *testing.T) {
+	t.Parallel()
 	bint := big.NewInt(0xCAFEDEAD)
 	serial := NewSerialFromBytes(bint.Bytes())
 	reflex := serial.AsBigInt()
@@ -139,6 +144,7 @@ func TestSerialBigInt(t *testing.T) {
 }
 
 func TestSerialBinaryStrings(t *testing.T) {
+	t.Parallel()
 	serials := []Serial{
 		NewSerialFromHex("ABCDEF"),
 		NewSerialFromHex("001100"),
@@ -161,6 +167,7 @@ func TestSerialBinaryStrings(t *testing.T) {
 }
 
 func TestSerialID(t *testing.T) {
+	t.Parallel()
 	x := NewSerialFromHex("DEADBEEF")
 	idStr := x.ID()
 	decoded, err := NewSerialFromIDString(idStr)
