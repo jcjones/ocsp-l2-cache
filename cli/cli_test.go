@@ -62,7 +62,8 @@ func TestCheck(t *testing.T) {
 		WithIdentifier("test").
 		WithRedis(setting, time.Hour).
 		WithConnectionDeadline(time.Second).
-		WithListenAddr(":12345").Check(context.TODO())
+		WithListenAddr(":12345").
+		WithHealthListenAddr(":23456").Check(context.TODO())
 	if err != nil {
 		t.Fatalf("Got an error: %v", err)
 	}

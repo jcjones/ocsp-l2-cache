@@ -88,3 +88,8 @@ func (rc *RedisCache) Get(ctx context.Context, k string) (string, bool, error) {
 	}
 	return v, true, err
 }
+
+func (rc *RedisCache) Info(ctx context.Context) (string, error) {
+	sr := rc.client.Info(ctx)
+	return sr.Result()
+}

@@ -13,16 +13,16 @@ import (
 	"github.com/jcjones/ocsp-l2-cache/cli"
 )
 
-// Accept CLI arguments and pass them to the internal methods, to permit testing
 func main() {
-	// TODO: pull in an argparse
+	// TODO: read from env vars
 	err := cli.New().
 		WithUpstreamResponder("A84A6A63047DDDBAE6D139B7A64565EFF3A8ECA1", "http://ocsp.int-x3.letsencrypt.org").
 		WithUpstreamResponder("C5B1AB4E4CB1CD6430937EC1849905ABE603E225", "http://ocsp.int-x4.letsencrypt.org").
 		WithUpstreamResponder("142EB317B75856CBAE500940E61FAF9D8B14C2C6", "http://r3.o.lencr.org").
 		WithUpstreamResponder("369D3EE0B140F6272C7CBF8D9D318AF654A64626", "http://r4.o.lencr.org").
 		WithIdentifier("jcj testing").
-		WithListenAddr(":9020").
+		WithListenAddr(":8080").
+		WithHealthListenAddr(":8081").
 		WithRedis("192.168.99.100:6379", time.Second).
 		WithCacheLifespan(24 * time.Hour).
 		WithConnectionDeadline(time.Second).

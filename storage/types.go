@@ -28,6 +28,7 @@ type RemoteCache interface {
 	Set(ctx context.Context, k string, v string, life time.Duration) error
 	Get(ctx context.Context, k string) (string, bool, error)
 	KeysToChan(ctx context.Context, pattern string, c chan<- string) error
+	Info(ctx context.Context) (string, error)
 }
 
 type Issuer struct {

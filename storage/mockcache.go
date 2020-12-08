@@ -6,6 +6,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"path/filepath" // used for glob-like matching in Keys
 	"time"
 )
@@ -14,6 +15,7 @@ type MockRemoteCache struct {
 	Data        map[string]string
 	Expirations map[string]time.Time
 	Duplicate   int
+	Alive       bool
 }
 
 func NewMockRemoteCache() *MockRemoteCache {
@@ -21,6 +23,7 @@ func NewMockRemoteCache() *MockRemoteCache {
 		Data:        make(map[string]string),
 		Expirations: make(map[string]time.Time),
 		Duplicate:   0,
+		Alive:       true,
 	}
 }
 
@@ -80,4 +83,11 @@ func (ec *MockRemoteCache) Get(ctx context.Context, k string) (string, bool, err
 	ec.CleanupExpiry()
 	v, ok := ec.Data[k]
 	return v, ok, nil
+}
+
+func (ec *MockRemoteCache) Info(ctx context.Context) (string, error) {
+	if ec.Alive {
+		return fmt.Sprintf("entries: %d\nok: true\n", len(ec.Data)), nil
+	}
+	return "", fmt.Errorf("Not alive")
 }
