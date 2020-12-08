@@ -7,18 +7,19 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jcjones/ocsp-l2-cache/storage"
+	blog "github.com/letsencrypt/boulder/log"
 )
 
 type HealthCheck struct {
-	cache storage.RemoteCache
+	logger blog.Logger
+	cache  storage.RemoteCache
 }
 
-func NewHealthCheck(cache storage.RemoteCache) *HealthCheck {
-	return &HealthCheck{cache}
+func NewHealthCheck(logger blog.Logger, cache storage.RemoteCache) *HealthCheck {
+	return &HealthCheck{logger, cache}
 }
 
 func (hc *HealthCheck) HandleQuery(response http.ResponseWriter, request *http.Request) {
@@ -28,7 +29,7 @@ func (hc *HealthCheck) HandleQuery(response http.ResponseWriter, request *http.R
 		response.WriteHeader(200)
 		_, err := response.Write([]byte(fmt.Sprintf("ok: cache is alive\ninfo:\n%v", data)))
 		if err != nil {
-			log.Printf("Couldn't return ok health status: %+v", err)
+			hc.logger.Warningf("Couldn't return ok health status: %+v", err)
 		}
 		return
 	}
@@ -36,7 +37,7 @@ func (hc *HealthCheck) HandleQuery(response http.ResponseWriter, request *http.R
 	response.WriteHeader(500)
 	_, err := response.Write([]byte(fmt.Sprintf("failed: %v", healtherr)))
 	if err != nil {
-		log.Printf("Couldn't return ok health status: %+v", err)
+		hc.logger.Warningf("Couldn't return ok health status: %+v", err)
 	}
 
 }

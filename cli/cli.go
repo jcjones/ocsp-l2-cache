@@ -8,7 +8,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +18,8 @@ import (
 	"github.com/jcjones/ocsp-l2-cache/repo"
 	"github.com/jcjones/ocsp-l2-cache/server"
 	"github.com/jcjones/ocsp-l2-cache/storage"
+
+	blog "github.com/letsencrypt/boulder/log"
 )
 
 type Responder struct {
@@ -29,6 +30,7 @@ type Responder struct {
 // CLI holds state for a run of the tool; use the Run method to execute it. Can
 // run more than once.
 type CLI struct {
+	logger             blog.Logger
 	identifier         string
 	listenAddr         string
 	healthListenAddr   string
@@ -61,6 +63,11 @@ func (cli *CLI) WithUpstreamResponder(issuerId string, respUrl string) *CLI {
 	}
 
 	cli.upstreamResponders = append(cli.upstreamResponders, r)
+	return cli
+}
+
+func (cli *CLI) WithLogger(logger blog.Logger) *CLI {
+	cli.logger = logger
 	return cli
 }
 
@@ -130,7 +137,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 		return err
 	}
 
-	store := repo.NewOcspStore(remoteCache, cli.lifespan, time.Hour)
+	store := repo.NewOcspStore(cli.logger, remoteCache, cli.lifespan, time.Hour)
 
 	for _, r := range cli.upstreamResponders {
 		upstreamFetcher, err := fetcher.NewUpstreamFetcher(r.responderUrl, cli.identifier)
@@ -144,7 +151,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 	}
 
 	// Health monitoring
-	hc := server.NewHealthCheck(remoteCache)
+	hc := server.NewHealthCheck(cli.logger, remoteCache)
 	healthHandler := http.NewServeMux()
 	healthHandler.HandleFunc("/", hc.HandleQuery)
 
@@ -154,12 +161,12 @@ func (cli *CLI) Run(ctx context.Context) error {
 	}
 	go func() {
 		if err := healthServer.ListenAndServe(); err != http.ErrServerClosed {
-			log.Printf("Couldn't start health server: %v", err)
+			cli.logger.Errf("Couldn't start health server: %v", err)
 		}
 	}()
 
 	// Web-client interaction
-	frontEnd, err := server.NewOcspFrontEnd(store, cli.deadline)
+	frontEnd, err := server.NewOcspFrontEnd(cli.logger, store, cli.deadline)
 	if err != nil {
 		return err
 	}
@@ -174,7 +181,7 @@ func (cli *CLI) Run(ctx context.Context) error {
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, os.Interrupt)
 		<-sigint
-		log.Printf("Signal caught, HTTP server shutting down.")
+		cli.logger.Infof("Signal caught, HTTP server shutting down.")
 
 		// We received an interrupt signal, shut down.
 		_ = ocspServer.Shutdown(ctx)
@@ -182,12 +189,12 @@ func (cli *CLI) Run(ctx context.Context) error {
 		done <- true
 	}()
 
-	log.Printf("OCSP Serving on %v, Health Serving on %v", ocspServer.Addr, healthServer.Addr)
+	cli.logger.Infof("OCSP Serving on %v, Health Serving on %v", ocspServer.Addr, healthServer.Addr)
 
 	if err := ocspServer.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
 	<-done
-	log.Printf("HTTP server offline.")
+	cli.logger.Infof("HTTP server offline.")
 	return nil
 }

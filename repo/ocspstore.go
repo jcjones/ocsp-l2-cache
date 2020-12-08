@@ -8,23 +8,25 @@ package repo
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jcjones/ocsp-l2-cache/fetcher"
 	"github.com/jcjones/ocsp-l2-cache/storage"
+	blog "github.com/letsencrypt/boulder/log"
 	"golang.org/x/crypto/ocsp"
 )
 
 type OcspStore struct {
+	logger           blog.Logger
 	responders       map[string]fetcher.UpstreamFetcher
 	cache            storage.RemoteCache
 	lifespan         time.Duration
 	minimumCacheLife time.Duration
 }
 
-func NewOcspStore(cache storage.RemoteCache, lifespan time.Duration, minimumCacheLife time.Duration) OcspStore {
+func NewOcspStore(logger blog.Logger, cache storage.RemoteCache, lifespan time.Duration, minimumCacheLife time.Duration) OcspStore {
 	return OcspStore{
+		logger,
 		make(map[string]fetcher.UpstreamFetcher),
 		cache,
 		lifespan,
@@ -64,22 +66,22 @@ func (c *OcspStore) Get(ctx context.Context, req *ocsp.Request, reqBytes []byte)
 			return nil, nil, err
 		}
 
-		log.Printf("issuer %s serial %s hit", issuer.String(), serial.String())
+		c.logger.Debugf("issuer %s serial %s hit", issuer.String(), serial.String())
 		return cr.RawResp, cr.Headers(), nil
 	}
 
-	log.Printf("issuer %s serial %s miss", issuer.String(), serial.String())
+	c.logger.Debugf("issuer %s serial %s miss", issuer.String(), serial.String())
 
 	rspBytes, headers, err := uf.Fetch(ctx, reqBytes)
 	if err != nil {
-		log.Printf("Fetch error: %v", err)
+		c.logger.Warningf("Fetch error: %v", err)
 		return nil, nil, UpstreamError
 	}
 
 	// Don't verify here, use nil as issuer
 	resp, err := ocsp.ParseResponse(rspBytes, nil)
 	if err != nil {
-		log.Printf("Parse of upstream response error: %v", err)
+		c.logger.Warningf("Parse of upstream response error: %v", err)
 		return nil, nil, UpstreamError
 	}
 
