@@ -199,6 +199,10 @@ func (cli *CLI) Run(ctx context.Context) error {
 
 	cli.logger.Infof("OCSP Serving on %v, Health Serving on %v", ocspServer.Addr, healthServer.Addr)
 
+	for _, r := range cli.upstreamResponders {
+		cli.logger.Infof("Responder key ID: %s url: %s", r.issuer, r.responderUrl.String())
+	}
+
 	if err := ocspServer.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}

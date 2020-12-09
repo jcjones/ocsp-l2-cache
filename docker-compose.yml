@@ -3,8 +3,8 @@ services:
   l2cache:
     image: ocsp-l2-cache
     ports:
-      - 8080:8080
-      - 8081:8081
+      - "8080:8080/tcp"
+      - "8081:8081/tcp"
     networks:
      - cachenet
     depends_on:
@@ -19,7 +19,7 @@ services:
     networks:
      - cachenet
     ports:
-      - 6379:6379
+      - "6379:6379/tcp"
 
   rsyslog:
     image: vimagick/rsyslog
